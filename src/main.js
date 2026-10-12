@@ -5,6 +5,7 @@ import { Actor } from 'apify';
 import * as cheerio from 'cheerio';
 
 import { extractContacts, findContactLinks, mergeContacts } from './contacts.js';
+import { findGoogleBusinesses, isEngineAvailable } from './google.js';
 import { findBusinesses, geocode } from './osm.js';
 
 const DEFAULT_SEARCH_TERMS = ['clothing shops'];
@@ -24,6 +25,11 @@ function clampInt(value, fallback, min, max) {
     const n = Number.parseInt(value, 10);
     if (!Number.isFinite(n)) return fallback;
     return Math.min(Math.max(n, min), max);
+}
+
+function msUntilTimeout() {
+    const timeoutAt = Date.parse(process.env.ACTOR_TIMEOUT_AT ?? '');
+    return Number.isFinite(timeoutAt) ? timeoutAt - Date.now() : Infinity;
 }
 
 function buildSearches(input) {
@@ -74,7 +80,7 @@ async function pushBusiness(business, website, contacts) {
     const row = { ...rest, emails: [...business.emails], phones: [...business.phones], socialLinks: { ...business.socialLinks } };
     if (contacts) mergeContacts(row, contacts);
     row.phone = row.phones[0] ?? null;
-    await pushRow({ ...row, ...website, osmId: id, status: 'ok', scrapedAt: new Date().toISOString() });
+    await pushRow({ ...row, ...website, sourceId: id, status: 'ok', scrapedAt: new Date().toISOString() });
 }
 
 async function run() {
@@ -84,6 +90,8 @@ async function run() {
     const maxConcurrency = clampInt(input.maxConcurrency, 10, 1, 50);
     const enrichWebsites = input.enrichWebsites !== false;
     const onlyWithWebsite = input.onlyWithWebsite === true;
+    const dataSource = ['auto', 'google', 'openstreetmap'].includes(input.dataSource) ? input.dataSource : 'auto';
+    const language = /^[a-z]{2}(-[A-Za-z]{2})?$/.test(input.language ?? '') ? input.language : 'en';
 
     const { searches, problems } = buildSearches(input);
     for (const problem of problems) {
@@ -91,10 +99,25 @@ async function run() {
         summary.searches.push({ ...problem, found: 0 });
     }
 
+    let proxyConfiguration;
+    if (input.proxyConfiguration) {
+        try {
+            proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration);
+        } catch (err) {
+            log.warning(`Proxy could not be set up, continuing without it: ${err.message}`);
+        }
+    }
+
+    let useGoogle = dataSource !== 'openstreetmap';
+    if (useGoogle && !(await isEngineAvailable())) {
+        log.warning('Google Maps engine is not available in this environment, using OpenStreetMap only.');
+        useGoogle = false;
+    }
+
     // 1. Find the businesses.
     const places = new Map();
     for (const { searchTerm, location } of searches) {
-        const entry = { searchTerm, location, found: 0, error: null };
+        const entry = { searchTerm, location, source: null, found: 0, error: null };
         summary.searches.push(entry);
         try {
             if (!places.has(location)) {
@@ -102,12 +125,44 @@ async function run() {
                 places.set(location, await geocode(location));
             }
             const place = places.get(location);
-            if (!place) {
-                entry.error = `Location "${location}" was not found`;
-                log.warning(entry.error);
-                continue;
+            const locationName = place?.displayName || location;
+
+            let businesses = [];
+            if (useGoogle) {
+                // Leave room for the fallback search and the website visits before the run times out.
+                const budgetMs = Math.min(45_000 + maxResults * 2000, 600_000, msUntilTimeout() - 120_000);
+                if (budgetMs < 30_000) {
+                    log.warning('Not enough run time left for a Google Maps search.');
+                } else {
+                    try {
+                        businesses = await findGoogleBusinesses({
+                            searchTerm,
+                            location,
+                            place,
+                            locationName,
+                            maxResults,
+                            language,
+                            proxyUrl: await proxyConfiguration?.newUrl(),
+                            budgetMs,
+                        });
+                        if (businesses.length) entry.source = 'Google Maps';
+                    } catch (err) {
+                        log.warning(`Google Maps search failed: ${err.message}`);
+                    }
+                }
             }
-            const businesses = await findBusinesses({ searchTerm, place, locationName: place.displayName || location, maxResults });
+
+            if (!businesses.length && dataSource !== 'google') {
+                if (!place) {
+                    entry.error = `Location "${location}" was not found`;
+                    log.warning(entry.error);
+                    continue;
+                }
+                if (useGoogle) log.info('Falling back to OpenStreetMap.');
+                businesses = await findBusinesses({ searchTerm, place, locationName, maxResults });
+                if (businesses.length) entry.source = 'OpenStreetMap';
+            }
+
             for (const business of businesses) {
                 if (onlyWithWebsite && !business.website) continue;
                 if (state.pushed[business.id] || pending.has(business.id)) continue;
@@ -127,15 +182,6 @@ async function run() {
     if (!toVisit.length) return;
 
     // 3. Visit the websites for emails, phones and social links.
-    let proxyConfiguration;
-    if (input.proxyConfiguration) {
-        try {
-            proxyConfiguration = await Actor.createProxyConfiguration(input.proxyConfiguration);
-        } catch (err) {
-            log.warning(`Proxy could not be set up, continuing without it: ${err.message}`);
-        }
-    }
-
     const crawler = new CheerioCrawler({
         proxyConfiguration,
         maxConcurrency,
@@ -184,9 +230,8 @@ async function run() {
     });
 
     // Stop a little before the platform timeout so the run ends cleanly with everything stored.
-    const timeoutAt = Date.parse(process.env.ACTOR_TIMEOUT_AT ?? '');
-    if (Number.isFinite(timeoutAt)) {
-        const msLeft = timeoutAt - Date.now() - 45_000;
+    if (Number.isFinite(msUntilTimeout())) {
+        const msLeft = msUntilTimeout() - 45_000;
         setTimeout(() => {
             log.warning('Time limit is close, finishing with what has been collected.');
             crawler.autoscaledPool?.abort().catch(() => {});

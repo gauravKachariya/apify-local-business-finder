@@ -5,7 +5,7 @@
         "overview": {
             "title": "Overview",
             "transformation": {
-                "fields": ["name", "category", "address", "phone", "website", "emails", "openingHours", "searchTerm", "location", "status"]
+                "fields": ["name", "category", "address", "phone", "website", "emails", "rating", "reviewCount", "openingHours", "source", "searchTerm", "location", "status"]
             },
             "display": {
                 "component": "table",
@@ -16,7 +16,10 @@
                     "phone": { "label": "Phone", "format": "text" },
                     "website": { "label": "Website", "format": "link" },
                     "emails": { "label": "Emails", "format": "array" },
+                    "rating": { "label": "Rating", "format": "number" },
+                    "reviewCount": { "label": "Reviews", "format": "number" },
                     "openingHours": { "label": "Opening hours", "format": "text" },
+                    "source": { "label": "Source", "format": "text" },
                     "searchTerm": { "label": "Search term", "format": "text" },
                     "location": { "label": "Location", "format": "text" },
                     "status": { "label": "Status", "format": "text" }

@@ -25,6 +25,22 @@
             "maximum": 2000,
             "default": 50
         },
+        "dataSource": {
+            "title": "Data source",
+            "type": "string",
+            "description": "Automatic searches Google Maps first and uses OpenStreetMap when Google returns nothing or blocks the request.",
+            "editor": "select",
+            "enum": ["auto", "google", "openstreetmap"],
+            "enumTitles": ["Automatic (Google Maps, then OpenStreetMap)", "Google Maps only", "OpenStreetMap only (fastest, no ratings)"],
+            "default": "auto"
+        },
+        "language": {
+            "title": "Language",
+            "type": "string",
+            "description": "Language code for Google Maps results, e.g. en, de, es, fr.",
+            "editor": "textfield",
+            "default": "en"
+        },
         "enrichWebsites": {
             "title": "Collect contacts from websites",
             "type": "boolean",
@@ -54,9 +70,9 @@
             "default": 10
         },
         "proxyConfiguration": {
-            "title": "Proxy for website visits",
+            "title": "Proxy",
             "type": "object",
-            "description": "Optional. Used only when visiting business websites. If the proxy cannot be set up the run continues without it.",
+            "description": "Optional. Used for Google Maps and for visiting business websites. Residential proxies give the best results on Google Maps. If the proxy cannot be set up the run continues without it.",
             "editor": "proxy"
         }
     }

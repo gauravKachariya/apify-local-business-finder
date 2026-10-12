@@ -38,6 +38,7 @@ async function geocodeNominatim(location) {
         displayName: hit.display_name,
         areaId: hit.osm_type === 'relation' ? 3_600_000_000 + Number(hit.osm_id) : null,
         bbox: [south, west, north, east].every(Number.isFinite) ? [south, west, north, east] : null,
+        center: Number.isFinite(Number(hit.lat)) && Number.isFinite(Number(hit.lon)) ? { lat: Number(hit.lat), lon: Number(hit.lon) } : null,
     };
 }
 
@@ -49,16 +50,18 @@ async function geocodePhoton(location) {
     const p = feature.properties ?? {};
     // Photon extent order: [west, north, east, south]
     const [west, north, east, south] = p.extent ?? [];
+    const [lon, lat] = feature.geometry?.coordinates ?? [];
+    const hasCenter = Number.isFinite(lat) && Number.isFinite(lon);
     let bbox = [south, west, north, east];
     if (!bbox.every(Number.isFinite)) {
-        const [lon, lat] = feature.geometry?.coordinates ?? [];
-        if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+        if (!hasCenter) return null;
         bbox = [lat - 0.05, lon - 0.05, lat + 0.05, lon + 0.05];
     }
     return {
         displayName: [p.name, p.state, p.country].filter(Boolean).join(', '),
         areaId: p.osm_type === 'R' ? 3_600_000_000 + Number(p.osm_id) : null,
         bbox,
+        center: hasCenter ? { lat, lon } : null,
     };
 }
 
@@ -139,13 +142,13 @@ async function searchOverpass(category, place, limit) {
     const elements = [];
     for (const [areaFilter, prelude] of scopes) {
         const tagQuery = tagStatements(category, areaFilter);
-        if (tagQuery.length) elements.push(...(await runOverpass(wrapQuery(tagQuery, prelude, limit), 75_000)));
+        if (tagQuery.length) elements.push(...(await runOverpass(wrapQuery(tagQuery, prelude, limit), 45_000)));
 
         // Matching by business name is a bonus on top of the category match, so a failure here is not fatal.
         const nameQuery = nameStatements(category, areaFilter);
         if (nameQuery.length) {
             try {
-                elements.push(...(await runOverpass(wrapQuery(nameQuery, prelude, limit), tagQuery.length ? 40_000 : 75_000)));
+                elements.push(...(await runOverpass(wrapQuery(nameQuery, prelude, limit), tagQuery.length ? 20_000 : 45_000)));
             } catch (err) {
                 if (!elements.length) throw err;
                 log.warning(`Name search skipped: ${err.message}`);
@@ -261,11 +264,10 @@ function toBusiness(element, context) {
     const mapsQuery = encodeURIComponent([t.name, address || context.locationName].filter(Boolean).join(', '));
 
     return {
-        id: `${element.type}/${element.id}`,
+        id: `osm/${element.type}/${element.id}`,
         name: t.name,
         category: categoryKey ? t[categoryKey].replace(/_/g, ' ') : null,
-        categoryTag: categoryKey ? `${categoryKey}=${t[categoryKey]}` : null,
-        brand: t.brand ?? null,
+        categories: null,
         address: address || null,
         street: street || null,
         city,
@@ -280,11 +282,14 @@ function toBusiness(element, context) {
         emails,
         socialLinks,
         openingHours: t.opening_hours ?? null,
-        cuisine: t.cuisine ? splitValues(t.cuisine) : null,
-        wheelchair: t.wheelchair ?? null,
+        // Ratings and reviews exist only on Google Maps; the fields stay so every row has the same shape.
+        rating: null,
+        reviewCount: null,
+        priceRange: null,
         description: t.description ?? null,
-        osmUrl: `https://www.openstreetmap.org/${element.type}/${element.id}`,
+        placeId: null,
         googleMapsUrl: `https://www.google.com/maps/search/?api=1&query=${mapsQuery}`,
+        osmUrl: `https://www.openstreetmap.org/${element.type}/${element.id}`,
         searchTerm: context.searchTerm,
         location: context.locationName,
         source: 'OpenStreetMap',
