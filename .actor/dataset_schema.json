@@ -1,0 +1,27 @@
+{
+    "actorSpecification": 1,
+    "fields": {},
+    "views": {
+        "overview": {
+            "title": "Overview",
+            "transformation": {
+                "fields": ["name", "category", "address", "phone", "website", "emails", "openingHours", "searchTerm", "location", "status"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "name": { "label": "Name", "format": "text" },
+                    "category": { "label": "Category", "format": "text" },
+                    "address": { "label": "Address", "format": "text" },
+                    "phone": { "label": "Phone", "format": "text" },
+                    "website": { "label": "Website", "format": "link" },
+                    "emails": { "label": "Emails", "format": "array" },
+                    "openingHours": { "label": "Opening hours", "format": "text" },
+                    "searchTerm": { "label": "Search term", "format": "text" },
+                    "location": { "label": "Location", "format": "text" },
+                    "status": { "label": "Status", "format": "text" }
+                }
+            }
+        }
+    }
+}

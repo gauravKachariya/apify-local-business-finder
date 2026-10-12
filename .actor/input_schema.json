@@ -1,0 +1,63 @@
+{
+    "title": "Local Business Finder",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "searchTerms": {
+            "title": "Business types",
+            "type": "array",
+            "description": "What to look for, e.g. \"clothing shops\", \"dentists\", \"marketing agencies\". You can also write \"clothing shops in Los Angeles\" and leave Locations empty.",
+            "editor": "stringList",
+            "prefill": ["clothing shops"]
+        },
+        "locations": {
+            "title": "Locations",
+            "type": "array",
+            "description": "Cities, districts or regions, e.g. \"Los Angeles\" or \"Camden, London\". Every business type is searched in every location.",
+            "editor": "stringList",
+            "prefill": ["Los Angeles"]
+        },
+        "maxResultsPerSearch": {
+            "title": "Max results per search",
+            "type": "integer",
+            "description": "Upper limit of businesses returned for each business type and location pair. The most complete listings come first.",
+            "minimum": 1,
+            "maximum": 2000,
+            "default": 50
+        },
+        "enrichWebsites": {
+            "title": "Collect contacts from websites",
+            "type": "boolean",
+            "description": "Visits each business website to collect emails, phone numbers and social media links.",
+            "default": true
+        },
+        "maxPagesPerWebsite": {
+            "title": "Pages per website",
+            "type": "integer",
+            "description": "Home page plus contact / about pages checked on each website.",
+            "minimum": 1,
+            "maximum": 5,
+            "default": 3
+        },
+        "onlyWithWebsite": {
+            "title": "Only businesses with a website",
+            "type": "boolean",
+            "description": "Skips businesses that have no website listed.",
+            "default": false
+        },
+        "maxConcurrency": {
+            "title": "Max concurrency",
+            "type": "integer",
+            "description": "Websites visited in parallel.",
+            "minimum": 1,
+            "maximum": 50,
+            "default": 10
+        },
+        "proxyConfiguration": {
+            "title": "Proxy for website visits",
+            "type": "object",
+            "description": "Optional. Used only when visiting business websites. If the proxy cannot be set up the run continues without it.",
+            "editor": "proxy"
+        }
+    }
+}

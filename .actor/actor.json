@@ -1,0 +1,15 @@
+{
+    "actorSpecification": 1,
+    "name": "local-business-finder",
+    "title": "Local Business Finder",
+    "description": "Find local businesses by type and city (e.g. clothing shops in Los Angeles). Returns name, address, phone, website and opening hours from OpenStreetMap, plus emails and social links from each business website.",
+    "version": "0.1",
+    "buildTag": "latest",
+    "minMemoryMbytes": 256,
+    "maxMemoryMbytes": 4096,
+    "dockerfile": "./Dockerfile",
+    "input": "./input_schema.json",
+    "storages": {
+        "dataset": "./dataset_schema.json"
+    }
+}

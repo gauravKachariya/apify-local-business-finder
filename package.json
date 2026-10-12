@@ -1,0 +1,19 @@
+{
+    "name": "local-business-finder",
+    "version": "0.1.0",
+    "description": "Finds local businesses by type and city from OpenStreetMap and enriches them with emails, phones and social links from their websites.",
+    "type": "module",
+    "main": "src/main.js",
+    "engines": {
+        "node": ">=20"
+    },
+    "scripts": {
+        "start": "node src/main.js"
+    },
+    "dependencies": {
+        "apify": "^3.2.6",
+        "cheerio": "^1.0.0",
+        "@crawlee/cheerio": "^3.11.5"
+    },
+    "license": "Apache-2.0"
+}
