@@ -1,0 +1,19 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "Local Business Finder output",
+    "description": "Businesses found by the run and a short summary of each search.",
+    "properties": {
+        "businesses": {
+            "type": "string",
+            "title": "Businesses",
+            "description": "One row per business with contact details.",
+            "template": "{{links.apiDefaultDatasetUrl}}/items?view=overview"
+        },
+        "summary": {
+            "type": "string",
+            "title": "Run summary",
+            "description": "Searches performed, where the results came from and how many websites were checked.",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/OUTPUT"
+        }
+    }
+}
